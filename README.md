@@ -7,7 +7,7 @@ Although the class has ended, but I think every point of knowledge should be rev
 
 ### 0 . Must Read Series
 
-0.1 [The framework for learning Algorithms and intense problem solving exercises](think_like_computer/Framework and thoughts about learning data structure and algorithm.md)
+0.1 [The framework for learning Algorithms and intense problem solving exercises](think_like_computer/Framework%20and%20thoughts%20about%20learning%20data%20structure%20and%20algorithm.md)
 
 ### I. Dynamic Programming Series
 
