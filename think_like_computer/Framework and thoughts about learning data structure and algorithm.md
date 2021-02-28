@@ -1,5 +1,3 @@
-\# Framework and thoughts about learning data structure and algorithmv
-
 # Framework and thoughts about learning data structure and algorithm
 
 Don’t dwell on the details, this article is used to build an overview of framework thinking of data structure and algorithm. The framework thinking is from the whole to the details, from the top to the bottom and from abstract to the concrete. 
