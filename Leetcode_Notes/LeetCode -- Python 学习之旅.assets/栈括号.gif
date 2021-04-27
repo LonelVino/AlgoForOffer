@@ -1,0 +1,334 @@
+function HistogramRef(guid){this.guid=guid;}
+return{HistogramRef};});'use strict';tr.exportTo('tr.v.d',function(){class RelatedHistogramMap extends tr.v.d.Diagnostic{constructor(){super();this.histogramsByName_=new Map();}
+canAddDiagnostic(otherDiagnostic){return otherDiagnostic instanceof RelatedHistogramMap;}
+addDiagnostic(otherDiagnostic){}
+mergeRelationships(otherDiagnostic,parentHist,otherParentHist){const parentGroupingPath=tr.v.d.GroupingPath.getFromHistogram(parentHist);for(const[name,otherRelatedHist]of otherDiagnostic){const mergedTo=otherRelatedHist.diagnostics.get(tr.v.d.RESERVED_NAMES.MERGED_TO);if(mergedTo===undefined)continue;for(const relatedHist of mergedTo.histogramsByName_.values()){const relatedGroupingPath=tr.v.d.GroupingPath.getFromHistogram(relatedHist);if(relatedGroupingPath===undefined)continue;if(!parentGroupingPath.equals(relatedGroupingPath))continue;this.set(name,relatedHist);}}}
+get(name){return this.histogramsByName_.get(name);}
+set(name,hist){if(!(hist instanceof tr.v.Histogram)&&!(hist instanceof tr.v.d.HistogramRef)){throw new Error('Must be instanceof Histogram or HistogramRef: '+
+hist);}
+this.histogramsByName_.set(name,hist);}
+add(hist){this.set(hist.name,hist);}
+get length(){return this.histogramsByName_.size;}*[Symbol.iterator](){for(const pair of this.histogramsByName_){yield pair;}}
+resolve(histograms,opt_required){for(const[name,value]of this){if(!(value instanceof tr.v.d.HistogramRef))continue;const guid=value.guid;const hist=histograms.lookupHistogram(guid);if(hist instanceof tr.v.Histogram){this.histogramsByName_.set(name,hist);}else if(opt_required){throw new Error('Unable to find Histogram '+guid);}}}
+asDictInto_(d){d.values={};for(const[name,hist]of this){d.values[name]=hist.guid;}}
+static fromDict(d){const map=new RelatedHistogramMap();for(const[name,guid]of Object.entries(d.values)){map.set(name,new tr.v.d.HistogramRef(guid));}
+return map;}}
+tr.v.d.Diagnostic.register(RelatedHistogramMap,{elementName:'tr-v-ui-related-histogram-map-span'});return{RelatedHistogramMap,};});'use strict';tr.exportTo('tr.v.d',function(){const COLOR_SCHEME_CHROME_USER_FRIENDLY_CATEGORY_DRIVER='ChromeUserFriendlyCategory';class RelatedHistogramBreakdown extends tr.v.d.RelatedHistogramMap{constructor(){super();this.colorScheme=undefined;}
+clone(){const clone=new RelatedHistogramBreakdown();clone.colorScheme=this.colorScheme;return clone;}
+canAddDiagnostic(otherDiagnostic){return otherDiagnostic instanceof RelatedHistogramBreakdown&&otherDiagnostic.colorScheme===this.colorScheme;}
+set(name,hist){if(!(hist instanceof tr.v.d.HistogramRef)){if(!(hist instanceof tr.v.Histogram)){throw new Error('RelatedHistogramBreakdown can only contain Histograms');}
+if((this.length>0)&&(hist.unit!==tr.b.getFirstElement(this)[1].unit)){throw new Error('Units mismatch',tr.b.getFirstElement(this)[1].unit,hist.unit);}}
+tr.v.d.RelatedHistogramMap.prototype.set.call(this,name,hist);}
+asDictInto_(d){tr.v.d.RelatedHistogramMap.prototype.asDictInto_.call(this,d);if(this.colorScheme)d.colorScheme=this.colorScheme;}
+static fromDict(d){const diagnostic=new RelatedHistogramBreakdown();for(const[name,guid]of Object.entries(d.values)){diagnostic.set(name,new tr.v.d.HistogramRef(guid));}
+if(d.colorScheme)diagnostic.colorScheme=d.colorScheme;return diagnostic;}
+static buildFromEvents(histograms,namePrefix,events,categoryForEvent,unit,opt_sampleForEvent,opt_binBoundaries,opt_this){const sampleForEvent=opt_sampleForEvent||((event)=>event.cpuSelfTime);const diagnostic=new RelatedHistogramBreakdown();for(const event of events){const sample=sampleForEvent.call(opt_this,event);if(sample===undefined)continue;const eventCategory=categoryForEvent.call(opt_this,event);let hist=diagnostic.get(eventCategory);if(hist===undefined){hist=new tr.v.Histogram(namePrefix+eventCategory,unit,opt_binBoundaries);histograms.addHistogram(hist);diagnostic.set(eventCategory,hist);}
+hist.addSample(sample,{relatedEvents:new tr.v.d.RelatedEventSet([event])});}
+return diagnostic;}}
+tr.v.d.Diagnostic.register(RelatedHistogramBreakdown,{elementName:'tr-v-ui-breakdown-span'});return{COLOR_SCHEME_CHROME_USER_FRIENDLY_CATEGORY_DRIVER,RelatedHistogramBreakdown,};});'use strict';tr.exportTo('tr.v.d',function(){class RelatedNameMap extends tr.v.d.Diagnostic{constructor(opt_info){super();this.map_=new Map();}
+clone(){const clone=new RelatedNameMap();clone.addDiagnostic(this);return clone;}
+equals(other){if(!(other instanceof RelatedNameMap))return false;const keys1=new Set(this.map_.keys());const keys2=new Set(other.map_.keys());if(!tr.b.setsEqual(keys1,keys2))return false;for(const[key,name]of this){if(name!==other.get(key))return false;}
+return true;}
+canAddDiagnostic(otherDiagnostic){return otherDiagnostic instanceof RelatedNameMap;}
+addDiagnostic(otherDiagnostic){for(const[key,name]of otherDiagnostic){const existing=this.get(key);if(existing===undefined){this.set(key,name);}else if(existing!==name){throw new Error('Histogram names differ: '+`"${existing}" != "${name}"`);}}}
+asDictInto_(d){d.names={};for(const[key,name]of this)d.names[key]=name;}
+set(key,name){this.map_.set(key,name);}
+get(key){return this.map_.get(key);}*[Symbol.iterator](){for(const pair of this.map_)yield pair;}*values(){for(const value of this.map_.values())yield value;}
+static fromEntries(entries){const names=new RelatedNameMap();for(const[key,name]of entries){names.set(key,name);}
+return names;}
+static fromDict(d){return RelatedNameMap.fromEntries(Object.entries(d.names||{}));}}
+tr.v.d.Diagnostic.register(RelatedNameMap,{elementName:'tr-v-ui-related-name-map-span',});return{RelatedNameMap,};});'use strict';tr.exportTo('tr.v.d',function(){class Scalar extends tr.v.d.Diagnostic{constructor(value){super();if(!(value instanceof tr.b.Scalar)){throw new Error('expected Scalar');}
+this.value=value;}
+clone(){return new Scalar(this.value);}
+asDictInto_(d){d.value=this.value.asDict();}
+static fromDict(d){return new Scalar(tr.b.Scalar.fromDict(d.value));}}
+tr.v.d.Diagnostic.register(Scalar,{elementName:'tr-v-ui-scalar-diagnostic-span'});return{Scalar,};});'use strict';tr.exportTo('tr.v.d',function(){class TagMap extends tr.v.d.Diagnostic{constructor(opt_info){super();this.tagsToStoryNames_=new Map();if(opt_info){for(const[tag,storyDisplayNames]of Object.entries(opt_info.tagsToStoryNames||{})){this.tagsToStoryNames.set(tag,new Set(storyDisplayNames));}}}
+clone(){const clone=new TagMap();clone.addDiagnostic(this);return clone;}
+addToHistogram(hist){hist.diagnostics.set(tr.v.d.RESERVED_NAMES.TAG_MAP,this);}
+equals(other){if(!(other instanceof TagMap))return false;const keys1=new Set(this.tagsToStoryNames.keys());const keys2=new Set(other.tagsToStoryNames.keys());if(!tr.b.setsEqual(keys1,keys2)){return false;}
+for(const key of keys1){if(!tr.b.setsEqual(this.tagsToStoryNames.get(key),other.tagsToStoryNames.get(key))){return false;}}
+return true;}
+canAddDiagnostic(otherDiagnostic){return otherDiagnostic instanceof TagMap;}
+addDiagnostic(otherDiagnostic){for(const[name,storyDisplayNames]of
+otherDiagnostic.tagsToStoryNames){if(!this.tagsToStoryNames.has(name)){this.tagsToStoryNames.set(name,new Set());}
+for(const t of storyDisplayNames){this.tagsToStoryNames.get(name).add(t);}}
+return this;}
+asDictInto_(d){d.tagsToStoryNames={};for(const[name,value]of this.tagsToStoryNames){d.tagsToStoryNames[name]=Array.from(value);}}
+get tagsToStoryNames(){return this.tagsToStoryNames_;}
+static fromDict(d){const info=new TagMap();for(const[name,values]of
+Object.entries(d.tagsToStoryNames||{})){info.tagsToStoryNames.set(name,new Set(values));}
+return info;}}
+tr.v.d.Diagnostic.register(TagMap,{elementName:'tr-v-ui-tag-map-span'});return{TagMap,};});'use strict';tr.exportTo('tr.v.d',function(){class UnmergeableDiagnosticSet extends tr.v.d.Diagnostic{constructor(diagnostics){super();this._diagnostics=diagnostics;}
+clone(){const clone=new tr.v.d.UnmergeableDiagnosticSet();clone.addDiagnostic(this);return clone;}
+canAddDiagnostic(otherDiagnostic){return true;}
+addDiagnostic(otherDiagnostic){if(otherDiagnostic instanceof UnmergeableDiagnosticSet){for(const subOtherDiagnostic of otherDiagnostic){const clone=subOtherDiagnostic.clone();this.addDiagnostic(clone);}
+return;}
+for(let i=0;i<this._diagnostics.length;++i){if(this._diagnostics[i].canAddDiagnostic(otherDiagnostic)){this._diagnostics[i].addDiagnostic(otherDiagnostic);return;}}
+const clone=otherDiagnostic.clone();this._diagnostics.push(clone);}
+mergeRelationships(otherDiagnostic,parentHist,otherParentHist){if(otherDiagnostic instanceof UnmergeableDiagnosticSet){for(const subDiagnostic of otherDiagnostic){this.mergeRelationships(subDiagnostic,parentHist,otherParentHist);}
+return;}
+for(const subDiagnostic of this){if(!(subDiagnostic instanceof tr.v.d.RelatedHistogramMap)&&!(subDiagnostic instanceof tr.v.d.RelatedHistogramBreakdown)){continue;}
+subDiagnostic.mergeRelationships(otherDiagnostic,parentHist,otherParentHist);}}
+get length(){return this._diagnostics.length;}*[Symbol.iterator](){for(const diagnostic of this._diagnostics)yield diagnostic;}
+asDictInto_(d){d.diagnostics=this._diagnostics.map(d=>d.asDictOrReference());}
+static fromDict(d){return new UnmergeableDiagnosticSet(d.diagnostics.map(d=>((typeof d==='string')?new tr.v.d.DiagnosticRef(d):tr.v.d.Diagnostic.fromDict(d))));}}
+tr.v.d.Diagnostic.register(UnmergeableDiagnosticSet,{elementName:'tr-v-ui-unmergeable-diagnostic-set-span'});return{UnmergeableDiagnosticSet,};});'use strict';tr.exportTo('tr.v.d',function(){const RESERVED_INFOS={ANGLE_REVISIONS:{name:'angleRevisions',type:tr.v.d.GenericSet},ARCHITECTURES:{name:'architectures',type:tr.v.d.GenericSet},BENCHMARKS:{name:'benchmarks',type:tr.v.d.GenericSet},BENCHMARK_START:{name:'benchmarkStart',type:tr.v.d.DateRange},BENCHMARK_DESCRIPTIONS:{name:'benchmarkDescriptions',type:tr.v.d.GenericSet},BOTS:{name:'bots',type:tr.v.d.GenericSet},BUG_COMPONENTS:{name:'bugComponents',type:tr.v.d.GenericSet},BUILDS:{name:'builds',type:tr.v.d.GenericSet},CATAPULT_REVISIONS:{name:'catapultRevisions',type:tr.v.d.GenericSet},CHROMIUM_COMMIT_POSITIONS:{name:'chromiumCommitPositions',type:tr.v.d.GenericSet},CHROMIUM_REVISIONS:{name:'chromiumRevisions',type:tr.v.d.GenericSet},DEVICE_IDS:{name:'deviceIds',type:tr.v.d.GenericSet},GPUS:{name:'gpus',type:tr.v.d.GenericSet},GROUPING_PATH:{name:'groupingPath',type:tr.v.d.GroupingPath},IS_REFERENCE_BUILD:{name:'isReferenceBuild',type:tr.v.d.GenericSet},LABELS:{name:'labels',type:tr.v.d.GenericSet},LOG_URLS:{name:'logUrls',type:tr.v.d.GenericSet},MASTERS:{name:'masters',type:tr.v.d.GenericSet},MEMORY_AMOUNTS:{name:'memoryAmounts',type:tr.v.d.GenericSet},MERGED_FROM:{name:'mergedFrom',type:tr.v.d.RelatedHistogramMap},MERGED_TO:{name:'mergedTo',type:tr.v.d.RelatedHistogramMap},OS_NAMES:{name:'osNames',type:tr.v.d.GenericSet},OS_VERSIONS:{name:'osVersions',type:tr.v.d.GenericSet},OWNERS:{name:'owners',type:tr.v.d.GenericSet},PRODUCT_VERSIONS:{name:'productVersions',type:tr.v.d.GenericSet},RELATED_NAMES:{name:'relatedNames',type:tr.v.d.GenericSet},SKIA_REVISIONS:{name:'skiaRevisions',type:tr.v.d.GenericSet},STORIES:{name:'stories',type:tr.v.d.GenericSet},STORYSET_REPEATS:{name:'storysetRepeats',type:tr.v.d.GenericSet},STORY_TAGS:{name:'storyTags',type:tr.v.d.GenericSet},TAG_MAP:{name:'tagmap',type:tr.v.d.TagMap},TRACE_START:{name:'traceStart',type:tr.v.d.DateRange},TRACE_URLS:{name:'traceUrls',type:tr.v.d.GenericSet},V8_COMMIT_POSITIONS:{name:'v8CommitPositions',type:tr.v.d.DateRange},V8_REVISIONS:{name:'v8Revisions',type:tr.v.d.GenericSet},WEBRTC_REVISIONS:{name:'webrtcRevisions',type:tr.v.d.GenericSet},};const RESERVED_NAMES={};const RESERVED_NAMES_TO_TYPES=new Map();for(const[codename,info]of Object.entries(RESERVED_INFOS)){RESERVED_NAMES[codename]=info.name;if(RESERVED_NAMES_TO_TYPES.has(info.name)){throw new Error(`Duplicate reserved name "${info.name}"`);}
+RESERVED_NAMES_TO_TYPES.set(info.name,info.type);}
+const RESERVED_NAMES_SET=new Set(Object.values(RESERVED_NAMES));return{RESERVED_INFOS,RESERVED_NAMES,RESERVED_NAMES_SET,RESERVED_NAMES_TO_TYPES,};});'use strict';tr.exportTo('tr.v.d',function(){class DiagnosticMap extends Map{constructor(opt_allowReservedNames){super();if(opt_allowReservedNames===undefined){opt_allowReservedNames=true;}
+this.allowReservedNames_=opt_allowReservedNames;}
+set(name,diagnostic){if(typeof(name)!=='string'){throw new Error(`name must be string, not ${name}`);}
+if(!(diagnostic instanceof tr.v.d.Diagnostic)&&!(diagnostic instanceof tr.v.d.DiagnosticRef)){throw new Error(`Must be instanceof Diagnostic: ${diagnostic}`);}
+if(!this.allowReservedNames_&&tr.v.d.RESERVED_NAMES_SET.has(name)&&!(diagnostic instanceof tr.v.d.UnmergeableDiagnosticSet)&&!(diagnostic instanceof tr.v.d.DiagnosticRef)){const type=tr.v.d.RESERVED_NAMES_TO_TYPES.get(name);if(type&&!(diagnostic instanceof type)){throw new Error(`Diagnostics named "${name}" must be ${type.name}, `+`not ${diagnostic.constructor.name}`);}}
+Map.prototype.set.call(this,name,diagnostic);}
+delete(name){if(name===undefined)throw new Error('missing name');Map.prototype.delete.call(this,name);}
+addDicts(dict){for(const[name,diagnosticDict]of Object.entries(dict)){if(typeof diagnosticDict==='string'){this.set(name,new tr.v.d.DiagnosticRef(diagnosticDict));}else{this.set(name,tr.v.d.Diagnostic.fromDict(diagnosticDict));}}}
+resolveSharedDiagnostics(histograms,opt_required){for(const[name,value]of this){if(!(value instanceof tr.v.d.DiagnosticRef)){continue;}
+const guid=value.guid;const diagnostic=histograms.lookupDiagnostic(guid);if(diagnostic instanceof tr.v.d.Diagnostic){this.set(name,diagnostic);}else if(opt_required){throw new Error('Unable to find shared Diagnostic '+guid);}}}
+asDict(){const dict={};for(const[name,diagnostic]of this){dict[name]=diagnostic.asDictOrReference();}
+return dict;}
+static fromDict(d){const diagnostics=new DiagnosticMap();diagnostics.addDicts(d);return diagnostics;}
+static fromObject(obj){const diagnostics=new DiagnosticMap();if(!(obj instanceof Map))obj=Object.entries(obj);for(const[name,diagnostic]of obj){diagnostics.set(name,diagnostic);}
+return diagnostics;}
+addDiagnostics(other){for(const[name,otherDiagnostic]of other){if(name===tr.v.d.RESERVED_NAMES.MERGED_FROM||name===tr.v.d.RESERVED_NAMES.MERGED_TO||name===tr.v.d.RESERVED_NAMES.GROUPING_PATH){continue;}
+const myDiagnostic=this.get(name);if(myDiagnostic!==undefined&&myDiagnostic.canAddDiagnostic(otherDiagnostic)){myDiagnostic.addDiagnostic(otherDiagnostic);continue;}
+const clone=otherDiagnostic.clone();if(myDiagnostic===undefined){this.set(name,clone);continue;}
+this.set(name,new tr.v.d.UnmergeableDiagnosticSet([myDiagnostic,clone]));}}
+mergeRelationships(parentHist){for(const[name,diagnostic]of this){if(!(diagnostic instanceof tr.v.d.RelatedHistogramMap)&&!(diagnostic instanceof tr.v.d.RelatedHistogramBreakdown)&&!(diagnostic instanceof tr.v.d.UnmergeableDiagnosticSet)){continue;}
+for(const[unusedName,otherHist]of
+this.get(tr.v.d.RESERVED_NAMES.MERGED_FROM)){const otherDiagnostic=otherHist.diagnostics.get(name);if(!(otherDiagnostic instanceof tr.v.d.RelatedHistogramMap)&&!(otherDiagnostic instanceof tr.v.d.RelatedHistogramBreakdown)&&!(otherDiagnostic instanceof tr.v.d.UnmergeableDiagnosticSet)){continue;}
+diagnostic.mergeRelationships(otherDiagnostic,parentHist,otherHist);}}}}
+return{DiagnosticMap,};});'use strict';tr.exportTo('tr.v',function(){const MAX_DIAGNOSTIC_MAPS=16;const DEFAULT_SAMPLE_VALUES_PER_BIN=10;const DEFAULT_REBINNED_COUNT=40;const DEFAULT_BOUNDARIES_FOR_UNIT=new Map();const DELTA=String.fromCharCode(916);const Z_SCORE_NAME='z-score';const P_VALUE_NAME='p-value';const U_STATISTIC_NAME='U';function percentToString(percent,opt_force3){if(percent<0||percent>1){throw new Error('percent must be in [0,1]');}
+if(percent===0)return'000';if(percent===1)return'100';let str=percent.toString();if(str[1]!=='.'){throw new Error('Unexpected percent');}
+str=str+'0'.repeat(Math.max(4-str.length,0));if(str.length>4){if(opt_force3){str=str.slice(0,4);}else{str=str.slice(0,4)+'_'+str.slice(4);}}
+return'0'+str.slice(2);}
+function percentFromString(s){return parseFloat(s[0]+'.'+s.substr(1).replace(/_/g,''));}
+class HistogramBin{constructor(range){this.range=range;this.count=0;this.diagnosticMaps=[];}
+addSample(value){this.count+=1;}
+addDiagnosticMap(diagnostics){tr.b.math.Statistics.uniformlySampleStream(this.diagnosticMaps,this.count,diagnostics,MAX_DIAGNOSTIC_MAPS);}
+addBin(other){if(!this.range.equals(other.range)){throw new Error('Merging incompatible Histogram bins.');}
+tr.b.math.Statistics.mergeSampledStreams(this.diagnosticMaps,this.count,other.diagnosticMaps,other.count,MAX_DIAGNOSTIC_MAPS);this.count+=other.count;}
+fromDict(dict){this.count=dict[0];if(dict.length>1){for(const map of dict[1]){this.diagnosticMaps.push(tr.v.d.DiagnosticMap.fromDict(map));}}}
+asDict(){if(!this.diagnosticMaps.length){return[this.count];}
+return[this.count,this.diagnosticMaps.map(d=>d.asDict())];}}
+const DEFAULT_SUMMARY_OPTIONS=new Map([['avg',true],['count',true],['geometricMean',false],['max',true],['min',true],['nans',false],['std',true],['sum',true],]);class Histogram{constructor(name,unit,opt_binBoundaries){let binBoundaries=opt_binBoundaries;if(!binBoundaries){const baseUnit=unit.baseUnit?unit.baseUnit:unit;binBoundaries=DEFAULT_BOUNDARIES_FOR_UNIT.get(baseUnit.unitName);}
+this.guid_=undefined;this.binBoundariesDict_=binBoundaries.asDict();this.allBins=binBoundaries.bins.slice();this.description='';const allowReservedNames=false;this.diagnostics_=new tr.v.d.DiagnosticMap(allowReservedNames);this.maxNumSampleValues_=this.defaultMaxNumSampleValues_;this.name_=name;this.nanDiagnosticMaps=[];this.numNans=0;this.running_=undefined;this.sampleValues_=[];this.shortName=undefined;this.summaryOptions=new Map(DEFAULT_SUMMARY_OPTIONS);this.summaryOptions.set('percentile',[]);this.summaryOptions.set('iprs',[]);this.unit=unit;}
+static create(name,unit,samples,opt_options){const options=opt_options||{};const hist=new Histogram(name,unit,options.binBoundaries);if(options.description)hist.description=options.description;if(options.shortName)hist.shortName=options.shortName;if(options.summaryOptions){let summaryOptions=options.summaryOptions;if(!(summaryOptions instanceof Map)){summaryOptions=Object.entries(summaryOptions);}
+for(const[name,value]of summaryOptions){hist.summaryOptions.set(name,value);}}
+if(options.diagnostics!==undefined){let diagnostics=options.diagnostics;if(!(diagnostics instanceof Map)){diagnostics=Object.entries(diagnostics);}
+for(const[name,diagnostic]of diagnostics){hist.diagnostics.set(name,diagnostic);}}
+if(!(samples instanceof Array))samples=[samples];for(const sample of samples){if(typeof sample==='object'){hist.addSample(sample.value,sample.diagnostics);}else{hist.addSample(sample);}}
+return hist;}
+get diagnostics(){return this.diagnostics_;}
+get running(){return this.running_;}
+get maxNumSampleValues(){return this.maxNumSampleValues_;}
+set maxNumSampleValues(n){this.maxNumSampleValues_=n;tr.b.math.Statistics.uniformlySampleArray(this.sampleValues_,this.maxNumSampleValues_);}
+get name(){return this.name_;}
+get guid(){if(this.guid_===undefined){this.guid_=tr.b.GUID.allocateUUID4();}
+return this.guid_;}
+set guid(guid){if(this.guid_!==undefined){throw new Error('Cannot reset guid');}
+this.guid_=guid;}
+static fromDict(dict){const hist=new Histogram(dict.name,tr.b.Unit.fromJSON(dict.unit),HistogramBinBoundaries.fromDict(dict.binBoundaries));hist.guid=dict.guid;if(dict.shortName){hist.shortName=dict.shortName;}
+if(dict.description){hist.description=dict.description;}
+if(dict.diagnostics){hist.diagnostics.addDicts(dict.diagnostics);}
+if(dict.allBins){if(dict.allBins.length!==undefined){for(let i=0;i<dict.allBins.length;++i){hist.allBins[i]=new HistogramBin(hist.allBins[i].range);hist.allBins[i].fromDict(dict.allBins[i]);}}else{for(const[i,binDict]of Object.entries(dict.allBins)){hist.allBins[i]=new HistogramBin(hist.allBins[i].range);hist.allBins[i].fromDict(binDict);}}}
+if(dict.running){hist.running_=tr.b.math.RunningStatistics.fromDict(dict.running);}
+if(dict.summaryOptions){if(dict.summaryOptions.iprs){dict.summaryOptions.iprs=dict.summaryOptions.iprs.map(r=>tr.b.math.Range.fromExplicitRange(r[0],r[1]));}
+hist.customizeSummaryOptions(dict.summaryOptions);}
+if(dict.maxNumSampleValues!==undefined){hist.maxNumSampleValues=dict.maxNumSampleValues;}
+if(dict.sampleValues){hist.sampleValues_=dict.sampleValues;}
+if(dict.numNans){hist.numNans=dict.numNans;}
+if(dict.nanDiagnostics){for(const map of dict.nanDiagnostics){hist.nanDiagnosticMaps.push(tr.v.d.DiagnosticMap.fromDict(map));}}
+return hist;}
+get numValues(){return this.running_?this.running_.count:0;}
+get average(){return this.running_?this.running_.mean:undefined;}
+get standardDeviation(){return this.running_?this.running_.stddev:undefined;}
+get geometricMean(){return this.running_?this.running_.geometricMean:0;}
+get sum(){return this.running_?this.running_.sum:0;}
+get min(){return this.running_?this.running_.min:Infinity;}
+get max(){return this.running_?this.running_.max:-Infinity;}
+getDifferenceSignificance(other,opt_alpha){if(this.unit!==other.unit){throw new Error('Cannot compare Histograms with different units');}
+if(this.unit.improvementDirection===tr.b.ImprovementDirection.DONT_CARE){return tr.b.math.Statistics.Significance.DONT_CARE;}
+if(!(other instanceof Histogram)){throw new Error('Unable to compute a p-value');}
+const testResult=tr.b.math.Statistics.mwu(this.sampleValues,other.sampleValues,opt_alpha);return testResult.significance;}
+getApproximatePercentile(percent){if(percent<0||percent>1){throw new Error('percent must be in [0,1]');}
+if(this.numValues===0)return undefined;if(this.allBins.length===1){const sortedSampleValues=this.sampleValues.slice().sort((x,y)=>x-y);return sortedSampleValues[Math.floor((sortedSampleValues.length-1)*percent)];}
+let valuesToSkip=Math.floor((this.numValues-1)*percent);for(const bin of this.allBins){valuesToSkip-=bin.count;if(valuesToSkip>=0)continue;if(bin.range.min===-Number.MAX_VALUE){return bin.range.max;}
+if(bin.range.max===Number.MAX_VALUE){return bin.range.min;}
+return bin.range.center;}
+return this.allBins[this.allBins.length-1].range.min;}
+getBinIndexForValue(value){const i=tr.b.findFirstTrueIndexInSortedArray(this.allBins,b=>value<b.range.max);if(0<=i&&i<this.allBins.length)return i;return this.allBins.length-1;}
+getBinForValue(value){return this.allBins[this.getBinIndexForValue(value)];}
+addSample(value,opt_diagnostics){if(opt_diagnostics&&!(opt_diagnostics instanceof tr.v.d.DiagnosticMap)){opt_diagnostics=tr.v.d.DiagnosticMap.fromObject(opt_diagnostics);}
+if(typeof(value)!=='number'||isNaN(value)){this.numNans++;if(opt_diagnostics){tr.b.math.Statistics.uniformlySampleStream(this.nanDiagnosticMaps,this.numNans,opt_diagnostics,MAX_DIAGNOSTIC_MAPS);}}else{if(this.running_===undefined){this.running_=new tr.b.math.RunningStatistics();}
+this.running_.add(value);const binIndex=this.getBinIndexForValue(value);let bin=this.allBins[binIndex];if(bin.count===0){bin=new HistogramBin(bin.range);this.allBins[binIndex]=bin;}
+bin.addSample(value);if(opt_diagnostics){bin.addDiagnosticMap(opt_diagnostics);}}
+tr.b.math.Statistics.uniformlySampleStream(this.sampleValues_,this.numValues+this.numNans,value,this.maxNumSampleValues);}
+sampleValuesInto(samples){for(const sampleValue of this.sampleValues){samples.push(sampleValue);}}
+canAddHistogram(other){if(this.unit!==other.unit){return false;}
+if(this.binBoundariesDict_===other.binBoundariesDict_){return true;}
+if(this.binBoundariesDict_.length!==other.binBoundariesDict_.length){return false;}
+for(let i=0;i<this.binBoundariesDict_.length;++i){const slice=this.binBoundariesDict_[i];const otherSlice=other.binBoundariesDict_[i];if(slice instanceof Array){if(!(otherSlice instanceof Array)){return false;}
+if(slice[0]!==otherSlice[0]||!tr.b.math.approximately(slice[1],otherSlice[1])||slice[2]!==otherSlice[2]){return false;}}else{if(otherSlice instanceof Array){return false;}
+if(!tr.b.math.approximately(slice,otherSlice)){return false;}}}
+return true;}
+addHistogram(other){if(!this.canAddHistogram(other)){throw new Error('Merging incompatible Histograms');}
+tr.b.math.Statistics.mergeSampledStreams(this.nanDiagnosticMaps,this.numNans,other.nanDiagnosticMaps,other.numNans,MAX_DIAGNOSTIC_MAPS);tr.b.math.Statistics.mergeSampledStreams(this.sampleValues,this.numValues+this.numNans,other.sampleValues,other.numValues+other.numNans,(this.maxNumSampleValues+other.maxNumSampleValues)/2);this.numNans+=other.numNans;if(other.running_!==undefined){if(this.running_===undefined){this.running_=new tr.b.math.RunningStatistics();}
+this.running_=this.running_.merge(other.running_);}
+for(let i=0;i<this.allBins.length;++i){let bin=this.allBins[i];if(bin.count===0){bin=new HistogramBin(bin.range);this.allBins[i]=bin;}
+bin.addBin(other.allBins[i]);}
+let mergedFrom=this.diagnostics.get(tr.v.d.RESERVED_NAMES.MERGED_FROM);if(!mergedFrom){mergedFrom=new tr.v.d.RelatedHistogramMap();this.diagnostics.set(tr.v.d.RESERVED_NAMES.MERGED_FROM,mergedFrom);}
+mergedFrom.set(mergedFrom.length,other);let mergedTo=other.diagnostics.get(tr.v.d.RESERVED_NAMES.MERGED_TO);if(!mergedTo){mergedTo=new tr.v.d.RelatedHistogramMap();other.diagnostics.set(tr.v.d.RESERVED_NAMES.MERGED_TO,mergedTo);}
+mergedTo.set(mergedTo.length,this);this.diagnostics.addDiagnostics(other.diagnostics);for(const[stat,option]of other.summaryOptions){if(stat==='percentile'){const percentiles=this.summaryOptions.get(stat);for(const percent of option){if(!percentiles.includes(percent))percentiles.push(percent);}}else if(stat==='iprs'){const thisIprs=this.summaryOptions.get(stat);for(const ipr of option){let found=false;for(const thisIpr of thisIprs){found=ipr.equals(thisIpr);if(found)break;}
+if(!found)thisIprs.push(ipr);}}else if(option&&!this.summaryOptions.get(stat)){this.summaryOptions.set(stat,true);}}}
+customizeSummaryOptions(summaryOptions){for(const[key,value]of Object.entries(summaryOptions)){this.summaryOptions.set(key,value);}}
+getStatisticScalar(statName,opt_referenceHistogram,opt_mwu){if(statName==='avg'){if(typeof(this.average)!=='number')return undefined;return new tr.b.Scalar(this.unit,this.average);}
+if(statName==='std'){if(typeof(this.standardDeviation)!=='number')return undefined;return new tr.b.Scalar(this.unit,this.standardDeviation);}
+if(statName==='geometricMean'){if(typeof(this.geometricMean)!=='number')return undefined;return new tr.b.Scalar(this.unit,this.geometricMean);}
+if(statName==='min'||statName==='max'||statName==='sum'){if(this.running_===undefined){this.running_=new tr.b.math.RunningStatistics();}
+if(typeof(this.running_[statName])!=='number')return undefined;return new tr.b.Scalar(this.unit,this.running_[statName]);}
+if(statName==='nans'){return new tr.b.Scalar(tr.b.Unit.byName.count_smallerIsBetter,this.numNans);}
+if(statName==='count'){return new tr.b.Scalar(tr.b.Unit.byName.count_smallerIsBetter,this.numValues);}
+if(statName.substr(0,4)==='pct_'){const percent=percentFromString(statName.substr(4));if(this.numValues===0)return undefined;const percentile=this.getApproximatePercentile(percent);if(typeof(percentile)!=='number')return undefined;return new tr.b.Scalar(this.unit,percentile);}
+if(statName.substr(0,4)==='ipr_'){let lower=percentFromString(statName.substr(4,3));let upper=percentFromString(statName.substr(8));if(lower>=upper){throw new Error('Invalid inter-percentile range: '+statName);}
+lower=this.getApproximatePercentile(lower);upper=this.getApproximatePercentile(upper);const ipr=upper-lower;if(typeof(ipr)!=='number')return undefined;return new tr.b.Scalar(this.unit,ipr);}
+if(!this.canCompare(opt_referenceHistogram)){throw new Error('Cannot compute '+statName+' when histograms are not comparable');}
+const suffix=tr.b.Unit.nameSuffixForImprovementDirection(this.unit.improvementDirection);const deltaIndex=statName.indexOf(DELTA);if(deltaIndex>=0){const baseStatName=statName.substr(deltaIndex+1);const thisStat=this.getStatisticScalar(baseStatName);const otherStat=opt_referenceHistogram.getStatisticScalar(baseStatName);const deltaValue=thisStat.value-otherStat.value;if(statName[0]==='%'){return new tr.b.Scalar(tr.b.Unit.byName['normalizedPercentageDelta'+suffix],deltaValue/otherStat.value);}
+return new tr.b.Scalar(thisStat.unit.correspondingDeltaUnit,deltaValue);}
+if(statName===Z_SCORE_NAME){return new tr.b.Scalar(tr.b.Unit.byName['sigmaDelta'+suffix],(this.average-opt_referenceHistogram.average)/opt_referenceHistogram.standardDeviation);}
+const mwu=opt_mwu||tr.b.math.Statistics.mwu(this.sampleValues,opt_referenceHistogram.sampleValues);if(statName===P_VALUE_NAME){return new tr.b.Scalar(tr.b.Unit.byName.unitlessNumber,mwu.p);}
+if(statName===U_STATISTIC_NAME){return new tr.b.Scalar(tr.b.Unit.byName.unitlessNumber,mwu.U);}
+throw new Error('Unrecognized statistic name: '+statName);}
+get statisticsNames(){const statisticsNames=new Set();for(const[statName,option]of this.summaryOptions){if(statName==='percentile'){for(const pctile of option){statisticsNames.add('pct_'+tr.v.percentToString(pctile));}}else if(statName==='iprs'){for(const range of option){statisticsNames.add('ipr_'+tr.v.percentToString(range.min,true)+'_'+tr.v.percentToString(range.max,true));}}else if(option){statisticsNames.add(statName);}}
+return statisticsNames;}
+canCompare(other){return other instanceof Histogram&&this.unit===other.unit&&this.numValues>0&&other.numValues>0;}
+getAvailableStatisticName(statName,opt_referenceHist){if(this.canCompare(opt_referenceHist))return statName;if(statName===Z_SCORE_NAME||statName===P_VALUE_NAME||statName===U_STATISTIC_NAME){return'avg';}
+const deltaIndex=statName.indexOf(DELTA);if(deltaIndex<0)return statName;return statName.substr(deltaIndex+1);}
+static getDeltaStatisticsNames(statNames){const deltaNames=[];for(const statName of statNames){deltaNames.push(`${DELTA}${statName}`);deltaNames.push(`%${DELTA}${statName}`);}
+return deltaNames.concat([Z_SCORE_NAME,P_VALUE_NAME,U_STATISTIC_NAME]);}
+get statisticsScalars(){const results=new Map();for(const statName of this.statisticsNames){const scalar=this.getStatisticScalar(statName);if(scalar===undefined)continue;results.set(statName,scalar);}
+return results;}
+get sampleValues(){return this.sampleValues_;}
+clone(){const binBoundaries=HistogramBinBoundaries.fromDict(this.binBoundariesDict_);const hist=new Histogram(this.name,this.unit,binBoundaries);for(const[stat,option]of this.summaryOptions){if(stat==='percentile'||stat==='iprs'){hist.summaryOptions.set(stat,Array.from(option));}else{hist.summaryOptions.set(stat,option);}}
+hist.addHistogram(this);return hist;}
+rebin(newBoundaries){const rebinned=new tr.v.Histogram(this.name,this.unit,newBoundaries);rebinned.description=this.description;for(const sample of this.sampleValues){rebinned.addSample(sample);}
+rebinned.running_=this.running_;for(const[name,diagnostic]of this.diagnostics){rebinned.diagnostics.set(name,diagnostic);}
+for(const[stat,option]of this.summaryOptions){if(stat==='percentile'){rebinned.summaryOptions.set(stat,Array.from(option));}else{rebinned.summaryOptions.set(stat,option);}}
+return rebinned;}
+asDict(){const dict={};dict.name=this.name;dict.unit=this.unit.asJSON();dict.guid=this.guid;if(this.binBoundariesDict_!==undefined){dict.binBoundaries=this.binBoundariesDict_;}
+if(this.shortName){dict.shortName=this.shortName;}
+if(this.description){dict.description=this.description;}
+if(this.diagnostics.size){dict.diagnostics=this.diagnostics.asDict();}
+if(this.maxNumSampleValues!==this.defaultMaxNumSampleValues_){dict.maxNumSampleValues=this.maxNumSampleValues;}
+if(this.numNans){dict.numNans=this.numNans;}
+if(this.nanDiagnosticMaps.length){dict.nanDiagnostics=this.nanDiagnosticMaps.map(dm=>dm.asDict());}
+if(this.numValues){dict.sampleValues=this.sampleValues.slice();dict.running=this.running_.asDict();dict.allBins=this.allBinsAsDict_();}
+const summaryOptions={};let anyOverriddenSummaryOptions=false;for(const[name,value]of this.summaryOptions){let option;if(name==='percentile'){if(value.length===0)continue;option=Array.from(value);}else if(name==='iprs'){if(value.length===0)continue;option=value.map(r=>[r.min,r.max]);}else if(value===DEFAULT_SUMMARY_OPTIONS.get(name)){continue;}else{option=value;}
+summaryOptions[name]=option;anyOverriddenSummaryOptions=true;}
+if(anyOverriddenSummaryOptions){dict.summaryOptions=summaryOptions;}
+return dict;}
+allBinsAsDict_(){const numBins=this.allBins.length;let emptyBins=0;for(let i=0;i<numBins;++i){if(this.allBins[i].count===0){++emptyBins;}}
+if(emptyBins===numBins){return undefined;}
+if(emptyBins>(numBins/2)){const allBinsDict={};for(let i=0;i<numBins;++i){const bin=this.allBins[i];if(bin.count>0){allBinsDict[i]=bin.asDict();}}
+return allBinsDict;}
+const allBinsArray=[];for(let i=0;i<numBins;++i){allBinsArray.push(this.allBins[i].asDict());}
+return allBinsArray;}
+get defaultMaxNumSampleValues_(){return DEFAULT_SAMPLE_VALUES_PER_BIN*Math.max(this.allBins.length,DEFAULT_REBINNED_COUNT);}}
+Histogram.AVERAGE_ONLY_SUMMARY_OPTIONS={count:false,max:false,min:false,std:false,sum:false,};const HISTOGRAM_BIN_BOUNDARIES_CACHE=new Map();class HistogramBinBoundaries{static createLinear(min,max,numBins){return new HistogramBinBoundaries(min).addLinearBins(max,numBins);}
+static createExponential(min,max,numBins){return new HistogramBinBoundaries(min).addExponentialBins(max,numBins);}
+static createWithBoundaries(binBoundaries){const builder=new HistogramBinBoundaries(binBoundaries[0]);for(const boundary of binBoundaries.slice(1)){builder.addBinBoundary(boundary);}
+return builder;}
+constructor(minBinBoundary){this.builder_=[minBinBoundary];this.range_=new tr.b.math.Range();this.range_.addValue(minBinBoundary);this.binRanges_=undefined;this.bins_=undefined;}
+get range(){return this.range_;}
+asDict(){if(this.builder_.length===1&&this.builder_[0]===Number.MAX_VALUE){return undefined;}
+return this.builder_;}
+pushBuilderSlice_(slice){this.builder_.push(slice);this.builder_=this.builder_.slice();}
+static fromDict(dict){if(dict===undefined){return HistogramBinBoundaries.SINGULAR;}
+const cacheKey=JSON.stringify(dict);if(HISTOGRAM_BIN_BOUNDARIES_CACHE.has(cacheKey)){return HISTOGRAM_BIN_BOUNDARIES_CACHE.get(cacheKey);}
+const binBoundaries=new HistogramBinBoundaries(dict[0]);for(const slice of dict.slice(1)){if(!(slice instanceof Array)){binBoundaries.addBinBoundary(slice);continue;}
+switch(slice[0]){case HistogramBinBoundaries.SLICE_TYPE.LINEAR:binBoundaries.addLinearBins(slice[1],slice[2]);break;case HistogramBinBoundaries.SLICE_TYPE.EXPONENTIAL:binBoundaries.addExponentialBins(slice[1],slice[2]);break;default:throw new Error('Unrecognized HistogramBinBoundaries slice type');}}
+HISTOGRAM_BIN_BOUNDARIES_CACHE.set(cacheKey,binBoundaries);return binBoundaries;}
+get bins(){if(this.bins_===undefined){this.buildBins_();}
+return this.bins_;}
+buildBins_(){this.bins_=this.binRanges.map(r=>new HistogramBin(r));}
+get binRanges(){if(this.binRanges_===undefined){this.buildBinRanges_();}
+return this.binRanges_;}
+buildBinRanges_(){if(typeof this.builder_[0]!=='number'){throw new Error('Invalid start of builder_');}
+this.binRanges_=[];let prevBoundary=this.builder_[0];if(prevBoundary>-Number.MAX_VALUE){this.binRanges_.push(tr.b.math.Range.fromExplicitRange(-Number.MAX_VALUE,prevBoundary));}
+for(const slice of this.builder_.slice(1)){if(!(slice instanceof Array)){this.binRanges_.push(tr.b.math.Range.fromExplicitRange(prevBoundary,slice));prevBoundary=slice;continue;}
+const nextMaxBinBoundary=slice[1];const binCount=slice[2];const sliceMinBinBoundary=prevBoundary;switch(slice[0]){case HistogramBinBoundaries.SLICE_TYPE.LINEAR:{const binWidth=(nextMaxBinBoundary-prevBoundary)/binCount;for(let i=1;i<binCount;i++){const boundary=sliceMinBinBoundary+i*binWidth;this.binRanges_.push(tr.b.math.Range.fromExplicitRange(prevBoundary,boundary));prevBoundary=boundary;}
+break;}
+case HistogramBinBoundaries.SLICE_TYPE.EXPONENTIAL:{const binExponentWidth=Math.log(nextMaxBinBoundary/prevBoundary)/binCount;for(let i=1;i<binCount;i++){const boundary=sliceMinBinBoundary*Math.exp(i*binExponentWidth);this.binRanges_.push(tr.b.math.Range.fromExplicitRange(prevBoundary,boundary));prevBoundary=boundary;}
+break;}
+default:throw new Error('Unrecognized HistogramBinBoundaries slice type');}
+this.binRanges_.push(tr.b.math.Range.fromExplicitRange(prevBoundary,nextMaxBinBoundary));prevBoundary=nextMaxBinBoundary;}
+if(prevBoundary<Number.MAX_VALUE){this.binRanges_.push(tr.b.math.Range.fromExplicitRange(prevBoundary,Number.MAX_VALUE));}}
+addBinBoundary(nextMaxBinBoundary){if(nextMaxBinBoundary<=this.range.max){throw new Error('The added max bin boundary must be larger than '+'the current max boundary');}
+this.binRanges_=undefined;this.bins_=undefined;this.pushBuilderSlice_(nextMaxBinBoundary);this.range.addValue(nextMaxBinBoundary);return this;}
+addLinearBins(nextMaxBinBoundary,binCount){if(binCount<=0){throw new Error('Bin count must be positive');}
+if(nextMaxBinBoundary<=this.range.max){throw new Error('The new max bin boundary must be greater than '+'the previous max bin boundary');}
+this.binRanges_=undefined;this.bins_=undefined;this.pushBuilderSlice_([HistogramBinBoundaries.SLICE_TYPE.LINEAR,nextMaxBinBoundary,binCount]);this.range.addValue(nextMaxBinBoundary);return this;}
+addExponentialBins(nextMaxBinBoundary,binCount){if(binCount<=0){throw new Error('Bin count must be positive');}
+if(this.range.max<=0){throw new Error('Current max bin boundary must be positive');}
+if(this.range.max>=nextMaxBinBoundary){throw new Error('The last added max boundary must be greater than '+'the current max boundary boundary');}
+this.binRanges_=undefined;this.bins_=undefined;this.pushBuilderSlice_([HistogramBinBoundaries.SLICE_TYPE.EXPONENTIAL,nextMaxBinBoundary,binCount]);this.range.addValue(nextMaxBinBoundary);return this;}}
+HistogramBinBoundaries.SLICE_TYPE={LINEAR:0,EXPONENTIAL:1,};HistogramBinBoundaries.SINGULAR=new HistogramBinBoundaries(Number.MAX_VALUE);DEFAULT_BOUNDARIES_FOR_UNIT.set(tr.b.Unit.byName.timeDurationInMs.unitName,HistogramBinBoundaries.createExponential(1e-3,1e6,1e2));DEFAULT_BOUNDARIES_FOR_UNIT.set(tr.b.Unit.byName.timeStampInMs.unitName,HistogramBinBoundaries.createLinear(0,1e10,1e3));DEFAULT_BOUNDARIES_FOR_UNIT.set(tr.b.Unit.byName.normalizedPercentage.unitName,HistogramBinBoundaries.createLinear(0,1.0,20));DEFAULT_BOUNDARIES_FOR_UNIT.set(tr.b.Unit.byName.sizeInBytes.unitName,HistogramBinBoundaries.createExponential(1,1e12,1e2));DEFAULT_BOUNDARIES_FOR_UNIT.set(tr.b.Unit.byName.energyInJoules.unitName,HistogramBinBoundaries.createExponential(1e-3,1e3,50));DEFAULT_BOUNDARIES_FOR_UNIT.set(tr.b.Unit.byName.powerInWatts.unitName,HistogramBinBoundaries.createExponential(1e-3,1,50));DEFAULT_BOUNDARIES_FOR_UNIT.set(tr.b.Unit.byName.unitlessNumber.unitName,HistogramBinBoundaries.createExponential(1e-3,1e3,50));DEFAULT_BOUNDARIES_FOR_UNIT.set(tr.b.Unit.byName.count.unitName,HistogramBinBoundaries.createExponential(1,1e3,20));DEFAULT_BOUNDARIES_FOR_UNIT.set(tr.b.Unit.byName.sigma.unitName,HistogramBinBoundaries.createLinear(-5,5,50));return{DEFAULT_REBINNED_COUNT,DELTA,Histogram,HistogramBinBoundaries,P_VALUE_NAME,U_STATISTIC_NAME,Z_SCORE_NAME,percentFromString,percentToString,};});'use strict';tr.exportTo('tr.v.ui',function(){Polymer({is:'tr-v-ui-scalar-context-controller',created(){this.host_=undefined;this.groupToContext_=new Map();this.dirtyGroups_=new Set();},attached(){if(this.host_){throw new Error('Scalar context controller is already attached to a host');}
+const host=findParentOrHost(this);if(host.__scalarContextController){throw new Error('Multiple scalar context controllers attached to this host');}
+host.__scalarContextController=this;this.host_=host;},detached(){if(!this.host_){throw new Error('Scalar context controller is not attached to a host');}
+if(this.host_.__scalarContextController!==this){throw new Error('Scalar context controller is not attached to its host');}
+delete this.host_.__scalarContextController;this.host_=undefined;},getContext(group){return this.groupToContext_.get(group);},onScalarSpanAdded(group,span){let context=this.groupToContext_.get(group);if(context===undefined){context={spans:new Set(),range:new tr.b.math.Range()};this.groupToContext_.set(group,context);}
+if(context.spans.has(span)){throw new Error('Scalar span already registered with group: '+group);}
+context.spans.add(span);this.markGroupDirtyAndScheduleUpdate_(group);},onScalarSpanRemoved(group,span){const context=this.groupToContext_.get(group);if(!context.spans.has(span)){throw new Error('Scalar span not registered with group: '+group);}
+context.spans.delete(span);this.markGroupDirtyAndScheduleUpdate_(group);},onScalarSpanUpdated(group,span){const context=this.groupToContext_.get(group);if(!context.spans.has(span)){throw new Error('Scalar span not registered with group: '+group);}
+this.markGroupDirtyAndScheduleUpdate_(group);},markGroupDirtyAndScheduleUpdate_(group){const alreadyDirty=this.dirtyGroups_.size>0;this.dirtyGroups_.add(group);if(!alreadyDirty){tr.b.requestAnimationFrameInThisFrameIfPossible(this.updateContext,this);}},updateContext(){const groups=this.dirtyGroups_;if(groups.size===0)return;this.dirtyGroups_=new Set();for(const group of groups){this.updateGroup_(group);}
+const event=new tr.b.Event('context-updated');event.groups=groups;this.dispatchEvent(event);},updateGroup_(group){const context=this.groupToContext_.get(group);if(context.spans.size===0){this.groupToContext_.delete(group);return;}
+context.range.reset();for(const span of context.spans){context.range.addValue(span.value);}}});function getScalarContextControllerForElement(element){while(element){if(element.__scalarContextController){return element.__scalarContextController;}
+element=findParentOrHost(element);}
+return undefined;}
+function findParentOrHost(node){if(node.parentElement){return node.parentElement;}
+while(Polymer.dom(node).parentNode){node=Polymer.dom(node).parentNode;}
+return node.host;}
+return{getScalarContextControllerForElement,};});'use strict';tr.exportTo('tr.v.ui',function(){function createScalarSpan(value,opt_config){if(value===undefined)return'';const config=opt_config||{};const ownerDocument=config.ownerDocument||document;const span=ownerDocument.createElement('tr-v-ui-scalar-span');let numericValue;if(value instanceof tr.b.Scalar){span.value=value;numericValue=value.value;}else if(value instanceof tr.v.Histogram){numericValue=value.average;if(numericValue===undefined)return'';span.setValueAndUnit(numericValue,value.unit);}else{const unit=config.unit;if(unit===undefined){throw new Error('Unit must be provided in config when value is a number');}
+span.setValueAndUnit(value,unit);numericValue=value;}
+if(config.context){span.context=config.context;}
+if(config.customContextRange){span.customContextRange=config.customContextRange;}
+if(config.leftAlign){span.leftAlign=true;}
+if(config.inline){span.inline=true;}
+if(config.significance!==undefined){span.significance=config.significance;}
+if(config.contextGroup!==undefined){span.contextGroup=config.contextGroup;}
+return span;}
+return{createScalarSpan,};});'use strict';Polymer({is:'tr-v-ui-scalar-span',properties:{contextGroup:{type:String,reflectToAttribute:true,observer:'contextGroupChanged_'}},created(){this.value_=undefined;this.unit_=undefined;this.context_=undefined;this.warning_=undefined;this.significance_=tr.b.math.Statistics.Significance.DONT_CARE;this.shouldSearchForContextController_=false;this.lazyContextController_=undefined;this.onContextUpdated_=this.onContextUpdated_.bind(this);this.updateContents_=this.updateContents_.bind(this);this.customContextRange_=undefined;},get significance(){return this.significance_;},set significance(s){this.significance_=s;this.updateContents_();},set contentTextDecoration(deco){this.$.content.style.textDecoration=deco;},get value(){return this.value_;},set value(value){if(value instanceof tr.b.Scalar){this.value_=value.value;this.unit_=value.unit;}else{this.value_=value;}
+this.updateContents_();if(this.hasContext_(this.contextGroup)){this.contextController_.onScalarSpanUpdated(this.contextGroup,this);}else{this.updateSparkline_();}},get contextController_(){if(this.shouldSearchForContextController_){this.lazyContextController_=tr.v.ui.getScalarContextControllerForElement(this);this.shouldSearchForContextController_=false;}
+return this.lazyContextController_;},hasContext_(contextGroup){return!!(contextGroup&&this.contextController_);},contextGroupChanged_(newContextGroup,oldContextGroup){this.detachFromContextControllerIfPossible_(oldContextGroup);if(!this.attachToContextControllerIfPossible_(newContextGroup)){this.onContextUpdated_();}},attachToContextControllerIfPossible_(contextGroup){if(!this.hasContext_(contextGroup))return false;this.contextController_.addEventListener('context-updated',this.onContextUpdated_);this.contextController_.onScalarSpanAdded(contextGroup,this);return true;},detachFromContextControllerIfPossible_(contextGroup){if(!this.hasContext_(contextGroup))return;this.contextController_.removeEventListener('context-updated',this.onContextUpdated_);this.contextController_.onScalarSpanRemoved(contextGroup,this);},attached(){tr.b.Unit.addEventListener('display-mode-changed',this.updateContents_);this.shouldSearchForContextController_=true;this.attachToContextControllerIfPossible_(this.contextGroup);},detached(){tr.b.Unit.removeEventListener('display-mode-changed',this.updateContents_);this.detachFromContextControllerIfPossible_(this.contextGroup);this.shouldSearchForContextController_=false;this.lazyContextController_=undefined;},onContextUpdated_(){this.updateSparkline_();},get context(){return this.context_;},set context(context){this.context_=context;this.updateContents_();},get unit(){return this.unit_;},set unit(unit){this.unit_=unit;this.updateContents_();this.updateSparkline_();},setValueAndUnit(value,unit){this.value_=value;this.unit_=unit;this.updateContents_();},get customContextRange(){return this.customContextRange_;},set customContextRange(customContextRange){this.customContextRange_=customContextRange;this.updateSparkline_();},get inline(){return Polymer.dom(this).classList.contains('inline');},set inline(inline){if(inline){Polymer.dom(this).classList.add('inline');}else{Polymer.dom(this).classList.remove('inline');}},get leftAlign(){return Polymer.dom(this).classList.contains('left-align');},set leftAlign(leftAlign){if(leftAlign){Polymer.dom(this).classList.add('left-align');}else{Polymer.dom(this).classList.remove('left-align');}},updateSparkline_(){Polymer.dom(this.$.sparkline).classList.remove('positive');Polymer.dom(this.$.sparkline).classList.remove('better');Polymer.dom(this.$.sparkline).classList.remove('worse');Polymer.dom(this.$.sparkline).classList.remove('same');this.$.sparkline.style.display='none';this.$.sparkline.style.left='0';this.$.sparkline.style.width='0';let range=this.customContextRange_;if(!range&&this.hasContext_(this.contextGroup)){const context=this.contextController_.getContext(this.contextGroup);if(context){range=context.range;}}
+if(!range||range.isEmpty)return;const leftPoint=Math.min(range.min,0);const rightPoint=Math.max(range.max,0);const pointDistance=rightPoint-leftPoint;if(pointDistance===0){return;}
+this.$.sparkline.style.display='block';let left;let width;if(this.value>0){width=Math.min(this.value,rightPoint);left=-leftPoint;Polymer.dom(this.$.sparkline).classList.add('positive');}else if(this.value<=0){width=-Math.max(this.value,leftPoint);left=(-leftPoint)-width;}
+this.$.sparkline.style.left=this.buildSparklineStyle_(left/pointDistance,false);this.$.sparkline.style.width=this.buildSparklineStyle_(width/pointDistance,true);const changeClass=this.changeClassName_;if(changeClass){Polymer.dom(this.$.sparkline).classList.add(changeClass);}},buildSparklineStyle_(ratio,isWidth){let position='calc('+ratio+' * (100% - 1px)';if(isWidth){position+=' + 1px';}
+position+=')';return position;},updateContents_(){Polymer.dom(this.$.content).textContent='';Polymer.dom(this.$.content).classList.remove('better');Polymer.dom(this.$.content).classList.remove('worse');Polymer.dom(this.$.content).classList.remove('same');this.$.insignificant.style.display='';this.$.significantly_better.style.display='';this.$.significantly_worse.style.display='';if(this.unit_===undefined)return;this.$.content.title='';Polymer.dom(this.$.content).textContent=this.unit_.format(this.value,this.context);this.updateDelta_();},updateDelta_(){let changeClass=this.changeClassName_;if(!changeClass){this.$.significance.style.display='none';return;}
+this.$.significance.style.display='inline';let title;switch(changeClass){case'better':title='improvement';break;case'worse':title='regression';break;case'same':title='no change';break;default:throw new Error('Unknown change class: '+changeClass);}
+Polymer.dom(this.$.content).classList.add(changeClass);switch(this.significance){case tr.b.math.Statistics.Significance.DONT_CARE:break;case tr.b.math.Statistics.Significance.INSIGNIFICANT:if(changeClass!=='same')title='insignificant '+title;this.$.insignificant.style.display='inline';changeClass='same';break;case tr.b.math.Statistics.Significance.SIGNIFICANT:if(changeClass==='same'){throw new Error('How can no change be significant?');}
+this.$['significantly_'+changeClass].style.display='inline';title='significant '+title;break;default:throw new Error('Unknown significance '+this.significance);}
+this.$.significance.title=title;this.$.content.title=title;},get changeClassName_(){if(!this.unit_||!this.unit_.isDelta)return undefined;switch(this.unit_.improvementDirection){case tr.b.ImprovementDirection.DONT_CARE:return undefined;case tr.b.ImprovementDirection.BIGGER_IS_BETTER:if(this.value===0)return'same';return this.value>0?'better':'worse';case tr.b.ImprovementDirection.SMALLER_IS_BETTER:if(this.value===0)return'same';return this.value<0?'better':'worse';default:throw new Error('Unknown improvement direction: '+
+this.unit_.improvementDirection);}},get warning(){return this.warning_;},set warning(warning){this.warning_=warning;const warningEl=this.$.warning;if(this.warning_){warningEl.title=warning;warningEl.style.display='inline';}else{warningEl.title='';warningEl.style.display='';}},get timestamp(){return this.value;},set timestamp(timestamp){if(timestamp instanceof tr.b.u.TimeStamp){this.value=timestamp;return;}
+this.setValueAndUnit(timestamp,tr.b.u.Units.timeStampInMs);},get duration(){return this.value;},set duration(duration){if(duration instanceof tr.b.u.TimeDuration){this.value=duration;return;}
+this.setValueAndUnit(duration,tr.b.u.Units.timeDurationInMs);}});'use strict';function isTable(object){if(!(object instanceof Array)||(object.length<2))return false;for(const colName in object[0]){if(typeof colName!=='string')return false;}
+for(let i=0;i<object.length;++i){if(!(object[i]instanceof Object))return false;for(const colName in object[i]){if(i&&(object[0][colName]===undefined))return false;const cellType=typeof object[i][colName];if(cellType!=='string'&&cellType!=='number')return false;}
+if(i){for(const colName in object[0]){if(object[i][colName]===undefined)return false;}}}
+return true;}
+Polymer({is:'tr-ui-a-generic-object-view',ready(){this.object_=undefined;},get object(){return this.object_;},set object(object){this.object_=object;this.updateContents_();},updateContents_(){Polymer.dom(this.$.content).textContent='';this.appendElementsForType_('',this.object_,0,0,5,'');},appendElementsForType_(label,object,indent,depth,maxDepth,suffix){if(depth>maxDepth){this.appendSimpleText_(label,indent,'<recursion limit reached>',suffix);return;}
+if(object===undefined){this.appendSimpleText_(label,indent,'undefined',suffix);return;}
+if(object===null){this.appendSimpleText_(label,indent,'null',suffix);return;}
+if(!(object instanceof Object)){const type=typeof object;if(type!=='string'){return this.appendSimpleText_(label,indent,object,suffix);}
+let objectReplaced=false;if((object[0]==='{'&&object[object.length-1]==='}')||(object[0]==='['&&object[object.length-1]===']')){try{object=JSON.parse(object);objectReplaced=true;}catch(e){}}
+if(!objectReplaced){if(object.includes('\n')){const lines=object.split('\n');lines.forEach(function(line,i){let text;let ioff;let ll;let ss;if(i===0){text='"'+line;ioff=0;ll=label;ss='';}else if(i<lines.length-1){text=line;ioff=1;ll='';ss='';}else{text=line+'"';ioff=1;ll='';ss=suffix;}
+const el=this.appendSimpleText_(ll,indent+ioff*label.length+ioff,text,ss);el.style.whiteSpace='pre';return el;},this);return;}
+if(tr.b.isUrl(object)){const link=document.createElement('a');link.href=object;link.textContent=object;this.appendElementWithLabel_(label,indent,link,suffix);return;}
+this.appendSimpleText_(label,indent,'"'+object+'"',suffix);return;}}
+if(object instanceof tr.model.ObjectSnapshot){const link=document.createElement('tr-ui-a-analysis-link');link.selection=new tr.model.EventSet(object);this.appendElementWithLabel_(label,indent,link,suffix);return;}
+if(object instanceof tr.model.ObjectInstance){const link=document.createElement('tr-ui-a-analysis-link');link.selection=new tr.model.EventSet(object);this.appendElementWithLabel_(label,indent,link,suffix);return;}
+if(object instanceof tr.b.math.Rect){this.appendSimpleText_(label,indent,object.toString(),suffix);return;}
+if(object instanceof tr.b.Scalar){const el=this.ownerDocument.createElement('tr-v-ui-scalar-span');el.value=object;el.inline=true;this.appendElementWithLabel_(label,indent,el,suffix);return;}
+if(object instanceof Array){this.appendElementsForArray_(label,object,indent,depth,maxDepth,suffix);return;}
+this.appendElementsForObject_(label,object,indent,depth,maxDepth,suffix);},appendElementsForArray_(label,object,indent,depth,maxDepth,suffix){if(object.length===0){this.appendSimpleText_(label,indent,'[]',suffix);return;}
+if(isTable(object)){const table=document.createElement('tr-ui-b-table');const columns=[];for(const colName of Object.keys(object[0])){let allStrings=true;let allNumbers=true;for(let i=0;i<object.length;++i){if(typeof(object[i][colName])!=='string'){allStrings=false;}
+if(typeof(object[i][colName])!=='number'){allNumbers=false;}
+if(!allStrings&&!allNumbers)break;}
+const column={title:colName};column.value=function(row){return row[colName];};if(allStrings){column.cmp=function(x,y){return x[colName].localeCompare(y[colName]);};}else if(allNumbers){column.cmp=function(x,y){retur
