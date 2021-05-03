@@ -6,11 +6,17 @@
     "configurations": [
         {
             "type": "java",
+            "name": "Launch Main",
+            "request": "launch",
+            "mainClass": "Main",
+            "projectName": "Algorithmic_8a32f896"
+        },
+        {
+            "type": "java",
             "name": "Launch Java Program",
             "request": "launch",
             "mainClass": ""
         },
-
         {
             "name": "g++ - 生成和调试活动文件",
             "type": "cppdbg",
