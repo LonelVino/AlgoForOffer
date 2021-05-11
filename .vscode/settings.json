@@ -53,5 +53,8 @@
         "typeindex": "cpp",
         "typeinfo": "cpp",
         "variant": "cpp"
-    }
+    },
+    "java.project.sourcePaths": [
+        "HuaweiTest/Java_code/MergeTable"
+    ]
 }
