@@ -16,7 +16,7 @@
  */
 
 /*
- * Soluton 1 -- ENUMERATION:
+ * Soluton -- Enumeration + Bit Manipulation:
  * ------- 
  * Insight: Numeral calculations with 2^i, could be solved by binary number, 
  *      e.g., the binary number of 12 is 1100, thus, 12 is the sum of (1 x 2^3 + 1 x 2^2 + 0 x 2^1 + 0 x 2^0)
@@ -33,15 +33,10 @@
  *      (2) otherwise, if `k` is smaller than the number of `1` in the binary number (`binary(x)`), 
  *          then we wont have enough manipulations to reduce `x` to 0, e.g., `x = 12` and `k = 1`, but we need `2^3` and `2^2`, i.e., `k` should be 2
  * 
- * Time complexity: O(x+|y|), where x is the number of digits of `num1`, while y for `num2` (I still didnt get it)
+ * Time complexity: O(x+|y|) --> O(1), where x is the number of digits of `num1`, while y for `num2` (I still didnt get it)
  * Space complexity: O(1), caz only `x`, `k` are the extra variables, both of which are long type integers.
  */
 
-/*
- * Soluton 2 -- Bit Manipulation
- * -------
- * TODO:
- */
 import java.lang.Long;
 
 public class App {
