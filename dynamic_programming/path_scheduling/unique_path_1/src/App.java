@@ -15,26 +15,26 @@
 */
 
 /*
-Solution (动态规划) (Time complexity -- O(m * n); Space complexity -- O(m * n)):
-(1) Initialization of the state transition matrix:
+ * Solution (动态规划) (Time complexity -- O(m * n); Space complexity -- O(m * n)):
+ * (1) Initialization of the state transition matrix:
         Since the number of unique paths on the boundary can only be 1, the elements of the matrix boundary are also 1:
             dp[:][:] = 0;
             dp[0][:] = 1; dp[:][0] = 1;
-(2) State transition equation: 
+ * (2) State transition equation: 
         Since the robot can only move right or  down, we only need to consider the left and upper elements of the current position (i, j), i.e., (i, j-1) and (i-1, j):
             dp[i][j] = dp[i-1][j] + dp[i][j-1]
 
-Optimized solution_1 (Space complexity -- O(2n)):
-    Considering the columns, only dp[i][:] and dp[i-i][:] are required during updating the state transition matrix, thus we can compress the size of the martix from MxN to 2xN:
+ * Optimized solution_1 (Space complexity -- O(2n)):
+ *      Considering the columns, only dp[i][:] and dp[i-i][:] are required during updating the state transition matrix, thus we can compress the size of the martix from MxN to 2xN:
 
-Optimized solution_2 (Space complexity -- O(n)):
-    Besides the columns, the rows are the same, only dp[:][j] and dp[:][j-i] are required during updating the state transition matrix, 
-    thus we can further compress the size of the matrix from 2xN to N:
+ * Optimized solution_2 (Space complexity -- O(n)):
+ *      Besides the columns, the rows are the same, only dp[:][j] and dp[:][j-i] are required during updating the state transition matrix, 
+ *      thus we can further compress the size of the matrix from 2xN to N:
 */
 
 import java.util.Arrays;
 
-public class unique_path_1 {
+public class App {
 
     public int uniquePaths(int m, int n) {
         int[][] dp = new int[m][n];
@@ -76,7 +76,7 @@ public class unique_path_1 {
     }
 
     public static void main(String[] args) {
-        unique_path_1 up1 = new unique_path_1();
+        App up1 = new App();
         int res = up1.uniquePaths(3, 3);
         int res_opt1 = up1.uniquePaths_opti_1(3, 3);
         int res_opt2 = up1.uniquePaths_opti_2(3, 3);
