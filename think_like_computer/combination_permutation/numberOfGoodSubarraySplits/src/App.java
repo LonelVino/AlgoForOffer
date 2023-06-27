@@ -14,38 +14,28 @@
 示例 2：输入：nums = [0,1,0]; 输出：1
  */
 
+/*
+ * Insight: only when `nums[i]==1`, update `count`; otherwise, count the number of `0`s between its previous and rear `1`, which will be used for `count` update
+ * 
+ * Main process: 
+ *
+ * NB: (1) take the remainder of each `count` update
+ *     (2) type of `count` --> long type
+ *     (3) should be multiplication, rather than addition
+*/
+
 public class App {
     public int numberOfGoodSubarraySplits(int[] nums) {
-        int idx = 0;
-        while (nums[idx] != 1) {
-            idx += 1;
-            if (idx == nums.length) {
-                return 0;
-            }
+        long ans = 1;
+        int pre = -1;
+        for (int i = 0; i < nums.length; i++) {
+            if (nums[i] == 0)
+                continue;
+            if (pre >= 0)
+                ans = ans * (i - pre) % ((long) 1e9 + 7);
+            pre = i;
         }
-        long count = 1;
-        int flag = 1;
-        long zero_count = 1;
-        for (int i = idx + 1; i < nums.length; i++) {
-            if (nums[i] == 1) { // nums[i] = 1
-                if (flag == 1) {
-                    // count += 1;
-                } else {
-                    count = count * zero_count % ((long) 1e9 + 7);
-                    flag = 1;
-                }
-            } else { // nums[i] = 0
-                if (flag == 1) {
-                    zero_count = 2;
-                    flag = 0;
-                } else {
-                    zero_count += 1;
-                }
-            }
-            System.out.printf("debug i: %d; nums: %d; count: %d\n", i, nums[i], count);
-        }
-
-        return (int) (count);
+        return pre >= 0 ? (int) ans : 0;
     }
 
     public static void main(String[] args) throws Exception {
